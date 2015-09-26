@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <algorithm>
+#include <assert.h>
 #include "../platform/platform.h"
 #include "bytefifo.h"
 
@@ -25,10 +26,10 @@ bool ByteFiFo::reset() {
 
 bool ByteFiFo::setSize(int iSize) {
   pthread_mutex_lock(&m_lckRing);
-  reset();
   delete[] m_pRing;
   m_pRing = new BYTE[iSize];
   m_iSize = m_pRing ? iSize : 0;
+  m_iCount = m_iReadIdx = m_iWriteIdx = 0;
   pthread_mutex_unlock(&m_lckRing);
   return m_pRing != NULL;
 }
@@ -47,11 +48,12 @@ bool ByteFiFo::put(BYTE byte) {
 }
 
 bool ByteFiFo::put(BYTE *pBuffer, int iLength) {
+#if 1
   bool bSuccess = false;
   pthread_mutex_lock(&m_lckRing);
   if(iLength <= m_iSize - m_iCount) {
     int iBytesBeforeWrap = m_iSize - m_iWriteIdx;
-    if(iBytesBeforeWrap > iLength) {
+    if(iLength > iBytesBeforeWrap) {
       memcpy(m_pRing + m_iWriteIdx, pBuffer, iBytesBeforeWrap);
       memcpy(m_pRing, pBuffer + iBytesBeforeWrap, iLength - iBytesBeforeWrap);
     }
@@ -63,6 +65,10 @@ bool ByteFiFo::put(BYTE *pBuffer, int iLength) {
   }
   pthread_mutex_unlock(&m_lckRing);
   return bSuccess;
+#else
+  while(iLength--) if(!put(*pBuffer++)) return false;
+  return true;
+#endif
 }
 
 bool ByteFiFo::get(BYTE *pByte) {
@@ -78,16 +84,27 @@ bool ByteFiFo::get(BYTE *pByte) {
   return bSuccess;
 }
 
-int ByteFiFo::get(BYTE *pByte, int iMaxLength) {
+int ByteFiFo::get(BYTE *pBuffer, int iMaxLength) {
   int iBytesRead = 0;
+#if 1
   pthread_mutex_lock(&m_lckRing);
-  while(m_iCount > 0 && iBytesRead < iMaxLength) {
-    int iBytes = std::min(m_iSize - m_iReadIdx, iMaxLength - iBytesRead);
-    memcpy(pByte, m_pRing + m_iReadIdx, iBytes);
-    pByte += iBytes;
-    iBytesRead += iBytes;
-    m_iCount -= iBytes;
+  int iLength = std::min(m_iCount, iMaxLength);
+  int iBytesBeforeWrap = m_iSize - m_iReadIdx;
+  if(iLength > iBytesBeforeWrap) {
+    memcpy(pBuffer, m_pRing + m_iReadIdx, iBytesBeforeWrap);
+    memcpy(pBuffer + iBytesBeforeWrap, m_pRing, iLength - iBytesBeforeWrap);
   }
+  else memcpy(pBuffer, m_pRing + m_iReadIdx, iLength);
+  m_iReadIdx += iLength;
+  if(m_iReadIdx >= m_iSize) m_iReadIdx -= m_iSize;
+  iBytesRead += iLength;
+  m_iCount -= iLength;
   pthread_mutex_unlock(&m_lckRing);
+#else
+  while(iMaxLength--) {
+    if(!get(pBuffer++)) break;
+    ++iBytesRead;
+  }
+#endif
   return iBytesRead;
 }

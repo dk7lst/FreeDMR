@@ -12,7 +12,7 @@ public:
   bool put(BYTE *pBuffer, int iLength);
 
   bool get(BYTE *pByte);
-  int get(BYTE *pByte, int iMaxLength);
+  int get(BYTE *pBuffer, int iMaxLength);
 
 protected:
   pthread_mutex_t m_lckRing;
