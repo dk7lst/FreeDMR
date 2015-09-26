@@ -15,7 +15,7 @@ public:
   bool setBaud(int iBaud);
   //bool setDataBits(int iBits);
   //bool setStopBits(int iBits);
-  bool setBytesForBlockingMode(int iBytes);
+  //bool setBytesForBlockingMode(int iBytes);
 
   // Port-Operationen:
   bool open(const char *pzDeviceName);

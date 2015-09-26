@@ -11,11 +11,11 @@
 RS232Port::RS232Port() {
   m_iFD = -1;
 
-  SetBaud(19200);
+  setBaud(19200);
 }
 
 RS232Port::~RS232Port() {
-  Close();
+  close();
 }
 
 bool RS232Port::setBaud(int iBaud) {
@@ -42,7 +42,7 @@ bool RS232Port::setStopBits(int iBits) {
 */
 
 bool RS232Port::open(const char *pzDeviceName) {
-  m_iFD = open(pzDeviceName, O_RDWR | O_NOCTTY);
+  m_iFD = ::open(pzDeviceName, O_RDWR | O_NOCTTY);
   if(m_iFD < 0) {
     return false;
   }
@@ -65,7 +65,7 @@ bool RS232Port::open(const char *pzDeviceName) {
 void RS232Port::close() {
   if(m_iFD >= 0) {
     tcsetattr(m_iFD, TCSANOW, &m_OrgTIO);
-    close(m_iFD);
+    ::close(m_iFD);
     m_iFD = -1;
   }
 }
