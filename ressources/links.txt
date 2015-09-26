@@ -1,0 +1,3 @@
+ETSI DMR Specs: http://www.etsi.org/index.php/technologies-clusters/technologies/digital-mobile-radio
+
+DV4mini technical docs: http://dv4m.ham-dmr.ch/Dokumentation/TechnicalDocs/
