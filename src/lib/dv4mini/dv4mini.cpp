@@ -125,8 +125,19 @@ void DV4Mini::runReceiveThread() {
   BYTE iCmd, iLength, paramBuffer[256];
   unsigned uIdx = 0;
   while(m_bReceiveThreadRunning) {
+#if 0
+    static const BYTE testData[] = {0x71, 0xFE, 0x39, 0x1D, 0x5, 0x28, 0xFF,
+      0x9C, 0x0, 0x1, 0x61, 0x8D, 0x76, 0xBD, 0xD4, 0xD5, 0x80, 0x6F, 0xAE,
+      0x23,  0xA8, 0x85, 0x88, 0x7B, 0xAE, 0x99, 0x4, 0x29, 0xFB, 0xE0, 0x90,
+      0xE2, 0xE1, 0xB7, 0x26, 0x9D, 0xE7, 0x1D, 0x2D, 0xA6, 0x4F, 0xD4, 0x16,
+      0x9A, 0x7C, 0xE3, 0x19};
+    int iBytes = sizeof testData;
+    assert(iBytes == 47);
+    memcpy(rxBuffer, testData, iBytes);
+#else
     int iBytes = m_Port.receive(rxBuffer, sizeof rxBuffer);
-#if 1
+#endif
+#if 0
     printf("DV4Mini::runReceiveThread(): Received %d bytes:", iBytes);
     for(int i = 0; i < iBytes; ++i) printf(" %X", rxBuffer[i]);
     putchar('\n');
@@ -137,9 +148,13 @@ void DV4Mini::runReceiveThread() {
         if(b == CmdPreamble[uIdx]) ++uIdx;
         else uIdx = 0;
       }
-      else if(uIdx == sizeof CmdPreamble) iCmd = b;
+      else if(uIdx == sizeof CmdPreamble) {
+        iCmd = b;
+        ++uIdx;
+      }
       else if(uIdx == sizeof CmdPreamble + 1) {
         iLength = b;
+        ++uIdx;
         if(iLength == 0) {
           receiveCmd(iCmd, NULL, 0);
           uIdx = 0;
@@ -152,6 +167,7 @@ void DV4Mini::runReceiveThread() {
           receiveCmd(iCmd, paramBuffer, iLength);
           uIdx = 0;
         }
+        else ++uIdx;
       }
     }
   }
@@ -175,5 +191,6 @@ bool DV4Mini::sendCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength) {
 }
 
 void DV4Mini::receiveCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength) {
-  printf("DV4Mini::receiveCmd(): Received cmd %d with %d bytes\n", iCmd, iLength);  
+  printf("DV4Mini::receiveCmd(): Received cmd %d with %d bytes\n", iCmd, iLength);
+  if(iCmd == ADFWATCHDOG) printf("  RSSI: %d\n", pParam[0] * 256 + pParam[1]);
 }
