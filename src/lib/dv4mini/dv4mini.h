@@ -43,6 +43,7 @@ public:
 
 protected:
   bool sendCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength);
+  void receiveCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength);
   
   pthread_mutex_t m_lckTx;
   pthread_t m_WatchdogThread, m_ReceiveThread;

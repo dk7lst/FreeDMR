@@ -40,7 +40,7 @@ DV4Mini::~DV4Mini() {
 
 bool DV4Mini::open(const char *pzDeviceName) {
   m_Port.setBaud(115200);
-  if(m_Port.open(pzDeviceName)) return false;
+  if(!m_Port.open(pzDeviceName)) return false;
 
   m_bWatchdogRunning = true;
   if(pthread_create(&m_WatchdogThread, NULL, WatchdogThread, this)) return false;
@@ -132,13 +132,16 @@ void DV4Mini::runReceiveThread() {
       else if(iIdx == sizeof CmdPreamble) iCmd = b;
       else if(iIdx == sizeof CmdPreamble + 1) {
         iLength = b;
-        if(iLength == 0) iIdx = 0;
+        if(iLength == 0) {
+          receiveCmd(iCmd, NULL, 0);
+          iIdx = 0;
+        }
       }
       else if(iIdx >= sizeof CmdPreamble + 2) {
         int iParamIdx = iIdx - sizeof CmdPreamble - 2;
         paramBuffer[iParamIdx] = b;
         if(iParamIdx >= iLength - 1) {
-          printf("Receive cmd %d with %d bytes\n", iCmd, iLength);
+          receiveCmd(iCmd, paramBuffer, iLength);
           iIdx = 0;
         }
       }
@@ -160,4 +163,8 @@ bool DV4Mini::sendCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength) {
   if(iLength > 0) m_Port.transmit(pParam, iLength);
   pthread_mutex_unlock(&m_lckTx);
   return true;
+}
+
+void DV4Mini::receiveCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength) {
+  printf("Receive cmd %d with %d bytes\n", iCmd, iLength);  
 }
