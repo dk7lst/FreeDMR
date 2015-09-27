@@ -33,10 +33,12 @@ void *ReceiveThread(void *pClassInstance) {
 }
 
 DV4Mini::DV4Mini() {
+  pthread_mutex_init(&m_lckTx, NULL);
 }
 
 DV4Mini::~DV4Mini() {
   close();
+  pthread_mutex_destroy(&m_lckTx);
 }
 
 bool DV4Mini::open(const char *pzDeviceName) {
