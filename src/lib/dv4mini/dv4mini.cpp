@@ -121,13 +121,16 @@ void DV4Mini::runWatchdogThread() {
 }
 
 void DV4Mini::runReceiveThread() {
-  puts("DV4Mini::runReceiveThread() started.");
   BYTE rxBuffer[256];
   BYTE iCmd, iLength, paramBuffer[256];
   unsigned uIdx = 0;
   while(m_bReceiveThreadRunning) {
     int iBytes = m_Port.receive(rxBuffer, sizeof rxBuffer);
-    printf("DV4Mini::runReceiveThread(): Received %d bytes.\n", iBytes);
+#if 1
+    printf("DV4Mini::runReceiveThread(): Received %d bytes:", iBytes);
+    for(int i = 0; i < iBytes; ++i) printf(" %X", rxBuffer[i]);
+    putchar('\n');
+#endif
     for(int iBufPos = 0; iBufPos < iBytes; ++iBufPos) {
       BYTE b = rxBuffer[iBufPos];
       if(uIdx < sizeof CmdPreamble) {
