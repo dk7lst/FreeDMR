@@ -121,11 +121,13 @@ void DV4Mini::runWatchdogThread() {
 }
 
 void DV4Mini::runReceiveThread() {
+  puts("DV4Mini::runReceiveThread() started.");
   BYTE rxBuffer[256];
   BYTE iCmd, iLength, paramBuffer[256];
   unsigned uIdx = 0;
   while(m_bReceiveThreadRunning) {
     int iBytes = m_Port.receive(rxBuffer, sizeof rxBuffer);
+    printf("DV4Mini::runReceiveThread(): Received %d bytes.\n", iBytes);
     for(int iBufPos = 0; iBufPos < iBytes; ++iBufPos) {
       BYTE b = rxBuffer[iBufPos];
       if(uIdx < sizeof CmdPreamble) {
@@ -159,7 +161,7 @@ bool DV4Mini::sendCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength) {
     return false;
   }
 
-  printf("DV4Mini::sendCmd(): Sending cmd %d with %d bytes.\n", iCmd, iLength);
+  //printf("DV4Mini::sendCmd(): Sending cmd %d with %d bytes.\n", iCmd, iLength);
   pthread_mutex_lock(&m_lckTx);
   m_Port.transmit(CmdPreamble, sizeof CmdPreamble);
   m_Port.transmit(&iCmd, 1);
@@ -170,5 +172,5 @@ bool DV4Mini::sendCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength) {
 }
 
 void DV4Mini::receiveCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength) {
-  printf("Receive cmd %d with %d bytes\n", iCmd, iLength);  
+  printf("DV4Mini::receiveCmd(): Received cmd %d with %d bytes\n", iCmd, iLength);  
 }
