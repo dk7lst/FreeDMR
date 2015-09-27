@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <unistd.h>
 #include <assert.h>
 #include "../platform/platform.h"
 #include "dv4mini.h"
@@ -20,24 +21,41 @@ enum {
   ADFSETTXBUF = 19
 };
 
+void *WatchdogThread(void *pClassInstance) {
+  ((DV4Mini *)pClassInstance)->runWatchdogThread();
+  pthread_exit(NULL);
+}
+
+void *ReceiveThread(void *pClassInstance) {
+  ((DV4Mini *)pClassInstance)->runReceiveThread();
+  pthread_exit(NULL);
+}
+
+DV4Mini::DV4Mini() {
+}
+
+DV4Mini::~DV4Mini() {
+  close();
+}
+
 bool DV4Mini::open(const char *pzDeviceName) {
-  port.setBaud(115200);
-  if(port.open(pzDeviceName)) return false;
-  setMode(MODE_DMR);
-  setTxPower(TXPOWER_MAX);
+  m_Port.setBaud(115200);
+  if(m_Port.open(pzDeviceName)) return false;
+
+  m_bWatchdogRunning = true;
+  if(pthread_create(&m_WatchdogThread, NULL, WatchdogThread, this)) return false;
+  if(pthread_create(&m_ReceiveThread, NULL, ReceiveThread, this)) {
+    m_bWatchdogRunning = false;
+    return false;
+  }
+
   return true;
 }
 
 void DV4Mini::close() {
-  port.close();
+  m_bReceiveThreadRunning = false;
+  m_Port.close();
 }
-
-/*  
-std::string DV4Mini::getVersion() const;
-void DV4Mini::setSeed();
-void DV4Mini::setLED();
-void DV4Mini::setBufferSize(int iLength);
-*/
 
 bool DV4Mini::setFrequency(int iHz) {
   struct SetFrequencyParameters
@@ -64,9 +82,13 @@ bool DV4Mini::setTxPower(TXPOWER level) {
   return sendCmd(ADFSETPOWER, &lev, 1);
 }
 
-/*
-std::string DV4Mini::getDebug();
-*/
+bool DV4Mini::requestWatchdogMsg() {
+  return sendCmd(ADFWATCHDOG, NULL, 0);
+}
+
+bool DV4Mini::requestReceiveMsg() {
+  return sendCmd(ADFGETDATA, NULL, 0);
+}
 
 bool DV4Mini::transmit(BYTE *pBuffer, BYTE iLength) {
   if(iLength < 1 || iLength > 245 || !pBuffer) {
@@ -80,19 +102,62 @@ bool DV4Mini::flush() {
   return sendCmd(FLUSHTXBUF, NULL, 0);
 }
 
-/*
-void DV4Mini::receive();
-*/
+void DV4Mini::runWatchdogThread() {
+  setMode(MODE_DMR);
+  setTxPower(TXPOWER_MAX);
 
+  int iCount = 0;
+  while(m_bWatchdogRunning) {
+    usleep(100);
+    requestReceiveMsg();
+    if(++iCount >= 10) {
+      requestWatchdogMsg();
+      iCount = 0;
+    }
+  }
+}
+
+void DV4Mini::runReceiveThread() {
+  BYTE rxBuffer[256];
+  BYTE iCmd, iLength, paramBuffer[256];
+  int iIdx = 0;
+  while(m_bReceiveThreadRunning) {
+    int iBytes = m_Port.receive(rxBuffer, sizeof rxBuffer);
+    for(int iBufPos = 0; iBufPos < iBytes; ++iBufPos) {
+      BYTE b = rxBuffer[iBufPos];
+      if(iIdx < sizeof CmdPreamble) {
+        if(b == CmdPreamble[iIdx]) ++iIdx;
+        else iIdx = 0;
+      }
+      else if(iIdx == sizeof CmdPreamble) iCmd = b;
+      else if(iIdx == sizeof CmdPreamble + 1) {
+        iLength = b;
+        if(iLength == 0) iIdx = 0;
+      }
+      else if(iIdx >= sizeof CmdPreamble + 2) {
+        int iParamIdx = iIdx - sizeof CmdPreamble - 2;
+        paramBuffer[iParamIdx] = b;
+        if(iParamIdx >= iLength - 1) {
+          printf("Receive cmd %d with %d bytes\n", iCmd, iLength);
+          iIdx = 0;
+        }
+      }
+    }
+  }
+  m_bWatchdogRunning = false;
+}
+  
 bool DV4Mini::sendCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength) {
   if(!pParam && iLength) {
     assert(0);
     return false;
   }
 
-  port.transmit(CmdPreamble, sizeof CmdPreamble);
-  port.transmit(&iCmd, 1);
-  port.transmit(&iLength, 1);
-  if(iLength > 0) port.transmit(pParam, iLength);
+  pthread_mutex_lock(&m_lckTx);
+  m_Port.transmit(CmdPreamble, sizeof CmdPreamble);
+  m_Port.transmit(&iCmd, 1);
+  m_Port.transmit(&iLength, 1);
+  if(iLength > 0) m_Port.transmit(pParam, iLength);
+  pthread_mutex_unlock(&m_lckTx);
   return true;
 }
