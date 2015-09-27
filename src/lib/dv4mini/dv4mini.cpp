@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <assert.h>
 #include "../platform/platform.h"
@@ -120,29 +121,29 @@ void DV4Mini::runWatchdogThread() {
 void DV4Mini::runReceiveThread() {
   BYTE rxBuffer[256];
   BYTE iCmd, iLength, paramBuffer[256];
-  int iIdx = 0;
+  unsigned uIdx = 0;
   while(m_bReceiveThreadRunning) {
     int iBytes = m_Port.receive(rxBuffer, sizeof rxBuffer);
     for(int iBufPos = 0; iBufPos < iBytes; ++iBufPos) {
       BYTE b = rxBuffer[iBufPos];
-      if(iIdx < sizeof CmdPreamble) {
-        if(b == CmdPreamble[iIdx]) ++iIdx;
-        else iIdx = 0;
+      if(uIdx < sizeof CmdPreamble) {
+        if(b == CmdPreamble[uIdx]) ++uIdx;
+        else uIdx = 0;
       }
-      else if(iIdx == sizeof CmdPreamble) iCmd = b;
-      else if(iIdx == sizeof CmdPreamble + 1) {
+      else if(uIdx == sizeof CmdPreamble) iCmd = b;
+      else if(uIdx == sizeof CmdPreamble + 1) {
         iLength = b;
         if(iLength == 0) {
           receiveCmd(iCmd, NULL, 0);
-          iIdx = 0;
+          uIdx = 0;
         }
       }
-      else if(iIdx >= sizeof CmdPreamble + 2) {
-        int iParamIdx = iIdx - sizeof CmdPreamble - 2;
+      else if(uIdx >= sizeof CmdPreamble + 2) {
+        int iParamIdx = uIdx - sizeof CmdPreamble - 2;
         paramBuffer[iParamIdx] = b;
         if(iParamIdx >= iLength - 1) {
           receiveCmd(iCmd, paramBuffer, iLength);
-          iIdx = 0;
+          uIdx = 0;
         }
       }
     }
@@ -156,6 +157,7 @@ bool DV4Mini::sendCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength) {
     return false;
   }
 
+  printf("DV4Mini::sendCmd(): Sending cmd %d with %d bytes.\n", iCmd, iLength);
   pthread_mutex_lock(&m_lckTx);
   m_Port.transmit(CmdPreamble, sizeof CmdPreamble);
   m_Port.transmit(&iCmd, 1);

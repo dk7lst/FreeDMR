@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 typedef unsigned char BYTE;
 
 #ifdef __APPLE__
