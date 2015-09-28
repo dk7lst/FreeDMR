@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string>
 #include <pthread.h>
 #include "../serial/rs232lib.h"
@@ -40,13 +41,33 @@ public:
 
   void runWatchdogThread();
   void runReceiveThread();
+  
+  void setSimulationMode(bool bOnOff) {
+    m_bSimulationMode = bOnOff;
+  }
+
+  void setLogFile(FILE *pFile, int iLevel) {
+    m_pLogFile = pFile;
+    m_iLogLevel = iLevel;
+  }
+
+  int getRSSI() const {
+    return m_iRSSI;
+  }
 
 protected:
   bool sendCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength);
   void receiveCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength);
-  
+
   pthread_mutex_t m_lckTx;
   pthread_t m_WatchdogThread, m_ReceiveThread;
-  RS232Port m_Port;
   bool m_bWatchdogRunning, m_bReceiveThreadRunning;
+
+  RS232Port m_Port;
+
+  FILE *m_pLogFile;
+  int m_iLogLevel;
+
+  bool m_bSimulationMode;
+  int m_iRSSI;
 };
