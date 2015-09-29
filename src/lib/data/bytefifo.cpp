@@ -47,7 +47,7 @@ bool ByteFiFo::put(BYTE byte) {
   return bSuccess;
 }
 
-bool ByteFiFo::put(BYTE *pBuffer, int iLength) {
+bool ByteFiFo::put(const BYTE *pBuffer, int iLength) {
 #if 1
   bool bSuccess = false;
   pthread_mutex_lock(&m_lckRing);
@@ -89,16 +89,18 @@ int ByteFiFo::get(BYTE *pBuffer, int iMaxLength) {
 #if 1
   pthread_mutex_lock(&m_lckRing);
   int iLength = std::min(m_iCount, iMaxLength);
-  int iBytesBeforeWrap = m_iSize - m_iReadIdx;
-  if(iLength > iBytesBeforeWrap) {
-    memcpy(pBuffer, m_pRing + m_iReadIdx, iBytesBeforeWrap);
-    memcpy(pBuffer + iBytesBeforeWrap, m_pRing, iLength - iBytesBeforeWrap);
+  if(iLength > 0) {
+    int iBytesBeforeWrap = m_iSize - m_iReadIdx;
+    if(iLength > iBytesBeforeWrap) {
+      memcpy(pBuffer, m_pRing + m_iReadIdx, iBytesBeforeWrap);
+      memcpy(pBuffer + iBytesBeforeWrap, m_pRing, iLength - iBytesBeforeWrap);
+    }
+    else memcpy(pBuffer, m_pRing + m_iReadIdx, iLength);
+    m_iReadIdx += iLength;
+    if(m_iReadIdx >= m_iSize) m_iReadIdx -= m_iSize;
+    iBytesRead += iLength;
+    m_iCount -= iLength;
   }
-  else memcpy(pBuffer, m_pRing + m_iReadIdx, iLength);
-  m_iReadIdx += iLength;
-  if(m_iReadIdx >= m_iSize) m_iReadIdx -= m_iSize;
-  iBytesRead += iLength;
-  m_iCount -= iLength;
   pthread_mutex_unlock(&m_lckRing);
 #else
   while(iMaxLength--) {

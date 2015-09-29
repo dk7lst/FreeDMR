@@ -8,8 +8,9 @@ Opt::Opt() {
 Opt::~Opt() {
 }
 
-bool Opt::registerOpt(const char *pszName, bool bIsRequired, bool bNeedsParam, const char *pszHelpText, const char *pszDefaultValue) {
+bool Opt::registerOpt(int iId, const char *pszName, bool bIsRequired, bool bNeedsParam, const char *pszHelpText, const char *pszDefaultValue) {
   OptEntry entry;
+  entry.m_iId = iId;
   entry.m_bIsRequired = bIsRequired;
   entry.m_bNeedsParam = bNeedsParam;
   entry.m_sParam = pszDefaultValue ? pszDefaultValue : "";
@@ -99,17 +100,43 @@ bool Opt::get(const char *pszOptName) const {
   return it != m_OptMap.end() && it->second.m_bIsSet;
 }
 
+bool Opt::get(int iId) const {
+  std::map<std::string, OptEntry>::const_iterator it = m_OptMap.begin();
+  while(it != m_OptMap.end()) {
+    if(it->second.m_iId == iId) return it->second.m_bIsSet;
+    ++it;
+  }
+  return false;
+}
+
 const std::string &Opt::getString(const char *pszOptName) const {
   std::map<std::string, OptEntry>::const_iterator it = m_OptMap.find(pszOptName);
-  return it != m_OptMap.end() ? it->second.m_sParam : "";
+  return it != m_OptMap.end() ? it->second.m_sParam : m_csEmpty;
+}
+
+const std::string &Opt::getString(int iId) const {
+  std::map<std::string, OptEntry>::const_iterator it = m_OptMap.begin();
+  while(it != m_OptMap.end()) {
+    if(it->second.m_iId == iId) return it->second.m_sParam;
+    ++it;
+  }
+  return m_csEmpty;
 }
 
 int Opt::getInt(const char *pszOptName) const {
   return atoi(getString(pszOptName).c_str());
 }
 
+int Opt::getInt(int iId) const {
+  return atoi(getString(iId).c_str());
+}
+
 double Opt::getDouble(const char *pszOptName) const {
   return atof(getString(pszOptName).c_str());
+}
+
+double Opt::getDouble(int iId) const {
+  return atof(getString(iId).c_str());
 }
 
 void Opt::dump() const {

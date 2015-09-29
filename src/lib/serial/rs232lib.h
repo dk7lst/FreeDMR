@@ -1,3 +1,4 @@
+#pragma once
 #include <strings.h>
 #include <fcntl.h>
 #include <unistd.h>

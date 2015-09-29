@@ -1,3 +1,5 @@
+#pragma once
+
 #include <libkern/OSByteOrder.h>
 
 #define htobe16(x) OSSwapHostToBigInt16(x)

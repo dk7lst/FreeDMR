@@ -35,6 +35,7 @@ void *ReceiveThread(void *pClassInstance) {
 
 DV4Mini::DV4Mini() {
   pthread_mutex_init(&m_lckTx, NULL);
+  m_pRxSink = NULL;
   m_pLogFile = NULL;
   m_iLogLevel = 0;
   m_iRSSI = 0;
@@ -203,6 +204,9 @@ void DV4Mini::receiveCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength) {
     case ADFWATCHDOG:
       assert(pParam && iLength >= 2);
       m_iRSSI = be16toh(*(uint16_t *)pParam);
+      break;
+    case ADFGETDATA:
+      if(m_pRxSink) m_pRxSink->put(pParam, iLength);
       break;
   }
 }

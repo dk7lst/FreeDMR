@@ -1,3 +1,4 @@
+#pragma once
 #include <netinet/in.h>
 
 // Repräsentation einer IPv4 Unicast bzw. Multicast-Adresse

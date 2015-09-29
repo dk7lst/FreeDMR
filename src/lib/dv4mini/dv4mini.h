@@ -1,7 +1,9 @@
+#pragma once
 #include <stdio.h>
 #include <string>
 #include <pthread.h>
 #include "../serial/rs232lib.h"
+#include "../data/bytesink.h"
 
 class DV4Mini {
 public:
@@ -37,11 +39,15 @@ public:
 
   bool transmit(BYTE *pBuffer, BYTE iLength);
   bool flush();
-  int receive();
 
   void runWatchdogThread();
   void runReceiveThread();
-  
+
+  bool setRxSink(ByteSink *pSink) {
+    m_pRxSink = pSink;
+    return true;
+  }
+
   void setSimulationMode(bool bOnOff) {
     m_bSimulationMode = bOnOff;
   }
@@ -64,6 +70,8 @@ protected:
   bool m_bWatchdogRunning, m_bReceiveThreadRunning;
 
   RS232Port m_Port;
+  
+  ByteSink *m_pRxSink;
 
   FILE *m_pLogFile;
   int m_iLogLevel;
