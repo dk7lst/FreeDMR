@@ -23,6 +23,8 @@ There are no branches with stable versions at the moment. Everything is under he
 # Running the software
 When compiling succeeded, go to "src/hardware/dv4mini"-directory and run the "dv4mini-server" binary. It will print some help when run with unknown command line arguments like "-help".
 
+Depending on your linux distribution and settings you may have to add the unix user to the "dialout" (or similar) group or change the the device permissions in order to run the software as an user other than root.
+
 WARNING: Some features of the software may require a ham radio license valid in your country!
 
 # Web Links
