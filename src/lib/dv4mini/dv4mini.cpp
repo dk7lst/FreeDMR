@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 #include <assert.h>
 #include "../platform/platform.h"
 #include "dv4mini.h"
@@ -67,6 +68,24 @@ void DV4Mini::close() {
   m_Port.close();
 }
 
+bool DV4Mini::setSeed() {
+  return setSeed(time(NULL));
+}
+
+bool DV4Mini::setSeed(uint32_t seed) {
+  return sendCmd(ADFSETSEED, (BYTE *)&seed, sizeof seed);
+}
+
+bool DV4Mini::setLED(bool bOnOff) {
+  BYTE b = bOnOff ? 1 : 0;
+  return sendCmd(ADFGREENLED, &b, sizeof b);
+}
+
+bool DV4Mini::setTxBufferSize(int iLength_ms) {
+  BYTE b = std::min(15, std::max(1, iLength_ms / 100));
+  return sendCmd(ADFSETTXBUF, &b, sizeof b);
+}
+
 bool DV4Mini::setFrequency(int iHz) {
   struct SetFrequencyParameters
   {
@@ -115,6 +134,7 @@ bool DV4Mini::flush() {
 void DV4Mini::runWatchdogThread() {
   setMode(MODE_DMR);
   setTxPower(TXPOWER_MAX);
+  setSeed();
 
   int iCount = 0;
   while(m_bWatchdogRunning) {
@@ -125,6 +145,8 @@ void DV4Mini::runWatchdogThread() {
       iCount = 0;
     }
   }
+  
+  setLED(false);
 }
 
 void DV4Mini::runReceiveThread() {
@@ -150,6 +172,7 @@ void DV4Mini::runReceiveThread() {
       for(int i = 0; i < iBytes; ++i) fprintf(m_pLogFile, " %X", rxBuffer[i]);
       fputc('\n', m_pLogFile);
     }
+
     for(int iBufPos = 0; iBufPos < iBytes; ++iBufPos) {
       BYTE b = rxBuffer[iBufPos];
       if(uIdx < sizeof CmdPreamble) {

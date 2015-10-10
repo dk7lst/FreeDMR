@@ -54,6 +54,8 @@ int main(int argc, char *argv[]) {
   mini.setFrequency(iFrequency_Hz);
   printf("Using device \"%s\" at %d Hz (%.3f kHz).\n", sDeviceName.c_str(), iFrequency_Hz, iFrequency_Hz / 1000.);
   
+  mini.setLED(true);
+  
   FileSink fsink;
   if(opt.get(P_WriteRxToFile)) {
     const char *pszWriteFileName = opt.getString(P_WriteRxToFile).c_str();

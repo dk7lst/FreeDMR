@@ -26,9 +26,10 @@ public:
   void close();
   
   //std::string getVersion() const;
-  //bool setSeed();
-  //bool setLED();
-  //bool setBufferSize(int iLength);
+  bool setSeed();
+  bool setSeed(uint32_t seed);
+  bool setLED(bool bOnOff);
+  bool setTxBufferSize(int iLength_ms);
   bool setFrequency(int iHz);
   bool setMode(MODE mode);
   bool setTxPower(TXPOWER level);
