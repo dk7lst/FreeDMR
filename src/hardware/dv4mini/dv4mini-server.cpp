@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
   opt.registerOpt(P_WriteRxToFile, "-w", false, true, "write received data to file");
   opt.registerOpt(P_TxFromFile, "-tx", false, true, "transmit data from file");
   opt.registerOpt(P_SimMode, "-s", false, false, "simulate without real hardware");
-  opt.registerOpt(P_LogLevel, "-ll", false, false, "log level");
+  opt.registerOpt(P_LogLevel, "-ll", false, true, "log level");
   opt.registerOpt(P_DebugMode, "-debug", false, false, "set debug mode");
   if(!opt.parse(argc, argv)) {
     opt.printHelp();
