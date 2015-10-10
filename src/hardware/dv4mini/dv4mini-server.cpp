@@ -90,10 +90,18 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
+#if 1
+  for(int i = 0; i < 5; ++i) {
+    sleep(1);
+    printf("RSSI=%d\n", mini.getRSSI());
+  }
+#else
   for(int i = 0; i < 50; ++i) {
     usleep(100);
     printf("RSSI=%d\n", mini.getRSSI());
   }
+#endif
   mini.close();
+  sleep(1); // Allow Threads to shut down.
   return 0;
 }
