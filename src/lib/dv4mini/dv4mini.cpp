@@ -65,6 +65,7 @@ bool DV4Mini::open(const char *pzDeviceName) {
 
 void DV4Mini::close() {
   m_bReceiveThreadRunning = false;
+  setLED(false);
   m_Port.close();
 }
 
@@ -145,8 +146,6 @@ void DV4Mini::runWatchdogThread() {
       iCount = 0;
     }
   }
-  
-  setLED(false);
 }
 
 void DV4Mini::runReceiveThread() {
