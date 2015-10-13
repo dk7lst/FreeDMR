@@ -8,14 +8,14 @@ public:
   ByteFiFo();
   virtual ~ByteFiFo();
 
-  bool reset();
-  bool setSize(int iSize);
+  virtual bool reset();
+  virtual bool setSize(int iSize);
 
-  bool put(BYTE byte);
-  bool put(const BYTE *pBuffer, int iLength);
+  virtual bool put(BYTE byte);
+  virtual bool put(const BYTE *pBuffer, int iLength);
 
-  bool get(BYTE *pByte);
-  int get(BYTE *pBuffer, int iMaxLength);
+  virtual bool get(BYTE *pByte);
+  virtual int get(BYTE *pBuffer, int iMaxLength);
 
 protected:
   pthread_mutex_t m_lckRing;
