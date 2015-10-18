@@ -102,6 +102,5 @@ int main(int argc, char *argv[]) {
   }
 #endif
   mini.close();
-  sleep(1); // Allow Threads to shut down.
   return 0;
 }

@@ -36,6 +36,7 @@ void *ReceiveThread(void *pClassInstance) {
 
 DV4Mini::DV4Mini() {
   pthread_mutex_init(&m_lckTx, NULL);
+  m_WatchdogThreadState = m_ReceiveThreadState = TSTATE_IDLE;
   m_pRxSink = NULL;
   m_pLogFile = NULL;
   m_iLogLevel = 0;
@@ -51,12 +52,16 @@ bool DV4Mini::open(const char *pzDeviceName) {
   m_Port.setBaud(115200);
   if(!m_Port.open(pzDeviceName)) return false;
 
-  m_bWatchdogRunning = true;
-  if(pthread_create(&m_WatchdogThread, NULL, WatchdogThread, this)) return false;
-  
-  m_bReceiveThreadRunning = true;
+  m_WatchdogThreadState = TSTATE_RUNNING;
+  if(pthread_create(&m_WatchdogThread, NULL, WatchdogThread, this)) {
+    m_WatchdogThreadState = TSTATE_IDLE;
+    return false;
+  }
+
+  m_ReceiveThreadState = TSTATE_RUNNING;
   if(pthread_create(&m_ReceiveThread, NULL, ReceiveThread, this)) {
-    m_bWatchdogRunning = false;
+    m_ReceiveThreadState = TSTATE_IDLE;
+    m_WatchdogThreadState = TSTATE_REQUESTSTOP;
     return false;
   }
 
@@ -64,8 +69,13 @@ bool DV4Mini::open(const char *pzDeviceName) {
 }
 
 void DV4Mini::close() {
-  m_bReceiveThreadRunning = false;
-  setLED(false);
+  if(m_ReceiveThreadState != TSTATE_IDLE) {
+    m_ReceiveThreadState = TSTATE_REQUESTSTOP;
+    pthread_join(m_ReceiveThread, NULL);
+  }
+  if(m_WatchdogThreadState != TSTATE_IDLE) {
+    pthread_join(m_WatchdogThread, NULL);
+  }
   m_Port.close();
 }
 
@@ -138,7 +148,7 @@ void DV4Mini::runWatchdogThread() {
   setSeed();
 
   int iCount = 0;
-  while(m_bWatchdogRunning) {
+  while(m_WatchdogThreadState == TSTATE_RUNNING) {
     usleep(100);
     requestReceiveMsg();
     if(++iCount >= 10) {
@@ -146,13 +156,15 @@ void DV4Mini::runWatchdogThread() {
       iCount = 0;
     }
   }
+  setLED(false);
+  m_WatchdogThreadState = TSTATE_STOPPED;
 }
 
 void DV4Mini::runReceiveThread() {
   BYTE rxBuffer[256];
   BYTE iCmd, iLength, paramBuffer[256];
   unsigned uIdx = 0;
-  while(m_bReceiveThreadRunning) {
+  while(m_ReceiveThreadState == TSTATE_RUNNING) {
     int iBytes = 0;
     if(m_bSimulationMode) {
       static const BYTE testData[] = {0x71, 0xFE, 0x39, 0x1D, 0x5, 0x28, 0xFF,
@@ -201,7 +213,8 @@ void DV4Mini::runReceiveThread() {
       }
     }
   }
-  m_bWatchdogRunning = false;
+  m_ReceiveThreadState = TSTATE_STOPPED;
+  m_WatchdogThreadState = TSTATE_REQUESTSTOP;
 }
   
 bool DV4Mini::sendCmd(BYTE iCmd, const BYTE *pParam, BYTE iLength) {

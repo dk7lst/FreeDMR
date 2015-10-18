@@ -19,6 +19,13 @@ public:
     TXPOWER_MAX = 9
   };
 
+  enum THREADSTATE {
+    TSTATE_IDLE,
+    TSTATE_RUNNING,
+    TSTATE_REQUESTSTOP,
+    TSTATE_STOPPED
+  };
+
   DV4Mini();
   virtual ~DV4Mini();
 
@@ -68,7 +75,7 @@ protected:
 
   pthread_mutex_t m_lckTx;
   pthread_t m_WatchdogThread, m_ReceiveThread;
-  bool m_bWatchdogRunning, m_bReceiveThreadRunning;
+  THREADSTATE m_WatchdogThreadState, m_ReceiveThreadState;
 
   RS232Port m_Port;
   
