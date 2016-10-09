@@ -26,7 +26,7 @@ void IPAddr::clear() {
  a.sin_addr.s_addr=a.sin_port=0;
 }
 
-char *IPAddr::tostring(char *buf) { // Puffer muss groß genug sein!
+char *IPAddr::tostring(char *buf) const { // Puffer muss gross genug sein!
  sprintf(buf,"%s:%d",inet_ntoa(a.sin_addr),ntohs(a.sin_port));
  return buf;
 }
@@ -60,7 +60,7 @@ int IPAddr::setbyipport(const char *hostport) {
  return 0;
 }
 
-uint16_t IPAddr::getport() {
+uint16_t IPAddr::getport() const {
  return ntohs(a.sin_port);
 }
 
@@ -68,15 +68,15 @@ void IPAddr::setport(uint16_t port) {
  a.sin_port=htons(port);
 }
 
-int IPAddr::isset() {
+int IPAddr::isset() const {
  return a.sin_addr.s_addr || a.sin_port;
 }
 
-int IPAddr::ismulticast() {
+int IPAddr::ismulticast() const {
  return (*(unsigned char *)&a.sin_addr.s_addr & 0xF0)==0xE0;
 }
 
-int IPAddr::islocalif() {
+int IPAddr::islocalif() const {
  int result=-1,s;
  if((s=socket(AF_INET,SOCK_DGRAM,0))>=0) {
   struct ifconf ifc;
@@ -146,7 +146,7 @@ int AbstractSocket::bind(IPAddr *bindaddr, uint16_t portoverride) {
  return bind(&interface);
 }
 
-int AbstractSocket::getsockname(IPAddr *bindaddr, unsigned *bindaddrlen) {
+int AbstractSocket::getsockname(IPAddr *bindaddr, unsigned *bindaddrlen) const {
  if(bindaddrlen) *bindaddrlen=sizeof(bindaddr->a);
  return ::getsockname(sockfd,(sockaddr *)&bindaddr->a,bindaddrlen);
 }
@@ -155,18 +155,18 @@ void AbstractSocket::enablereuseaddr(int onoff) {
  reuseaddrflag=onoff;
 }
 
-int AbstractSocket::enablerttlrecording(int onoff) {
+int AbstractSocket::enablerttlrecording(int onoff) const {
  return setsockopt(sockfd,SOL_IP,IP_RECVTTL,&onoff,sizeof(onoff));
 }
 
-int AbstractSocket::getttl(void) {
+int AbstractSocket::getttl(void) const {
   unsigned char ttl;
   socklen_t size=sizeof(ttl);
   if(getsockopt(sockfd, SOL_IP, IP_TTL, &ttl, &size)!=0) return -1;
   return ttl;
 }
 
-int AbstractSocket::setttl(int ttl) {
+int AbstractSocket::setttl(int ttl) const {
  if(ttl<0 || ttl>255) return -1;
  uint8_t ttlbyte=ttl;
  return setsockopt(sockfd,IPPROTO_IP,IP_TTL,&ttlbyte,sizeof(ttlbyte));
@@ -176,16 +176,16 @@ UDPSocket::UDPSocket() : AbstractSocket() {
  socketmode = SOCK_DGRAM;
 }
 
-int UDPSocket::sendto(IPAddr *destination, const void *buf, int bytes) {
+int UDPSocket::sendto(const IPAddr *destination, const void *buf, int bytes) const {
  return ::sendto(sockfd,buf,bytes,0,(const sockaddr *)&destination->a,sizeof(destination->a));
 }
 
-int UDPSocket::recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen) {
+int UDPSocket::recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen) const {
  if(fromaddrlen) *fromaddrlen=sizeof(fromaddr->a);
  return ::recvfrom(sockfd,buf,maxbytes,0,(sockaddr *)&fromaddr->a,fromaddrlen);
 }
 
-int UDPSocket::recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen, int *ttl) {
+int UDPSocket::recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen, int *ttl) const {
  if(!ttl) return recvfrom(buf,maxbytes,fromaddr,fromaddrlen);
  const int CMSGBUFSIZE=256;
  struct msghdr msg;
@@ -219,7 +219,7 @@ MulticastUDPSocket::MulticastUDPSocket() : UDPSocket() {
  reuseaddrflag=1;
 }
 
-int MulticastUDPSocket::join(IPAddr *mcgroup) {
+int MulticastUDPSocket::join(const IPAddr *mcgroup) const {
  struct ip_mreqn m;
  m.imr_multiaddr=mcgroup->a.sin_addr;
  m.imr_address.s_addr=INADDR_ANY;
@@ -227,7 +227,7 @@ int MulticastUDPSocket::join(IPAddr *mcgroup) {
  return setsockopt(sockfd,IPPROTO_IP,IP_ADD_MEMBERSHIP,&m,sizeof(m));
 }
 
-int MulticastUDPSocket::join(IPAddr *mcgroup, IPAddr *interface) {
+int MulticastUDPSocket::join(const IPAddr *mcgroup, const IPAddr *interface) const {
  struct ip_mreqn m;
  m.imr_multiaddr=mcgroup->a.sin_addr;
  m.imr_address.s_addr=interface->a.sin_addr.s_addr;
@@ -235,7 +235,7 @@ int MulticastUDPSocket::join(IPAddr *mcgroup, IPAddr *interface) {
  return setsockopt(sockfd,IPPROTO_IP,IP_ADD_MEMBERSHIP,&m,sizeof(m));
 }
 
-int MulticastUDPSocket::leave(IPAddr *mcgroup) {
+int MulticastUDPSocket::leave(const IPAddr *mcgroup) const {
  struct ip_mreqn m;
  m.imr_multiaddr=mcgroup->a.sin_addr;
  m.imr_address.s_addr=INADDR_ANY;
@@ -243,22 +243,22 @@ int MulticastUDPSocket::leave(IPAddr *mcgroup) {
  return setsockopt(sockfd,IPPROTO_IP,IP_DROP_MEMBERSHIP,&m,sizeof(m));
 }
 
-int MulticastUDPSocket::getttl(void) {
+int MulticastUDPSocket::getttl(void) const {
  int ttl;
  socklen_t size=sizeof(ttl);
  if(getsockopt(sockfd,IPPROTO_IP,IP_MULTICAST_TTL,&ttl,&size) != 0) return -1;
  return ttl;
 }
 
-int MulticastUDPSocket::setttl(int ttl) {
+int MulticastUDPSocket::setttl(int ttl) const {
  return setsockopt(sockfd,IPPROTO_IP,IP_MULTICAST_TTL,&ttl,sizeof(ttl));
 }
 
-int MulticastUDPSocket::enableloopmode(int flag) {
+int MulticastUDPSocket::enableloopmode(int flag) const {
  return setsockopt(sockfd,IPPROTO_IP,IP_MULTICAST_LOOP,&flag,sizeof(flag));
 }
 
-int MulticastUDPSocket::setoutgoinginterface(IPAddr *interface) {
+int MulticastUDPSocket::setoutgoinginterface(const IPAddr *interface) const {
  return setsockopt(sockfd,IPPROTO_IP,IP_MULTICAST_IF,&interface->a.sin_addr.s_addr,sizeof(interface->a.sin_addr.s_addr));
 }
 
@@ -266,24 +266,24 @@ TCPSocket::TCPSocket() : AbstractSocket() {
  socketmode = SOCK_STREAM;
 }
 
-int TCPSocket::connect(IPAddr *destination) {
+int TCPSocket::connect(const IPAddr *destination) {
  if(open() == -1) return -1;
  return ::connect(sockfd, (const sockaddr *)&destination->a, sizeof(destination->a));
 }
 
-int TCPSocket::send(const void *buf, int bytes) {
+int TCPSocket::send(const void *buf, int bytes) const {
  return ::send(sockfd, buf, bytes, 0);
 }
 
-int TCPSocket::sendline(const char *str) {
+int TCPSocket::sendline(const char *str) const {
  return send(str, strlen(str));
 }
 
-int TCPSocket::recv(void *buf, int maxbytes) {
+int TCPSocket::recv(void *buf, int maxbytes) const {
  return ::recv(sockfd, buf, maxbytes, 0);
 }
 
-int TCPSocket::recvline(void *buf, int maxbytes) {
+int TCPSocket::recvline(void *buf, int maxbytes) const {
  char *ptr = (char *)buf, byte;
  while(maxbytes > 1) {
   if(recv(&byte, 1) <= 0) break;

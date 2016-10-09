@@ -1,7 +1,7 @@
 #pragma once
 #include <netinet/in.h>
 
-// Repräsentation einer IPv4 Unicast bzw. Multicast-Adresse
+// Repraesentation einer IPv4 Unicast bzw. Multicast-Adresse
 class IPAddr {
 public:
  struct sockaddr_in a;
@@ -9,19 +9,18 @@ public:
  IPAddr();
  IPAddr(unsigned long n_addr, unsigned short n_port);
  void clear();
- char *tostring(char *buf);
- char *tostringwop(char *buf);
+ char *tostring(char *buf) const;
  int setbydotstring(const char *dotstr);
  int setbyhostname(const char *hostname);
  int setbyipport(const char *hostport);
- uint16_t getport();
+ uint16_t getport() const;
  void setport(uint16_t port);
- int isset();
- int ismulticast();
- int islocalif();
+ int isset() const;
+ int ismulticast() const;
+ int islocalif() const;
 };
 
-// Methoden und Attribute, die für alle Sockets gültig sind
+// Methoden und Attribute, die fuer alle Sockets gueltig sind
 class AbstractSocket {
 protected:
  int sockfd, socketmode;
@@ -33,48 +32,48 @@ public:
  
  virtual int open();
  virtual int close();
- virtual int bind(); // Port automatisch wählen
+ virtual int bind(); // Port automatisch waehlen
  virtual int bind(uint16_t port); // Port an allen Interfaces binden
  virtual int bind(IPAddr *interface); // Port nur an einem Interface binden
  virtual int bind(IPAddr *bindaddr, uint16_t portoverride);
- virtual int getsockname(IPAddr *bindaddr, unsigned *bindaddrlen);
+ virtual int getsockname(IPAddr *bindaddr, unsigned *bindaddrlen) const;
  virtual void enablereuseaddr(int onoff);
- virtual int enablerttlrecording(int onoff);
+ virtual int enablerttlrecording(int onoff) const;
  //virtual int enableblockingmode(int onoff); 
- virtual int getttl();
- virtual int setttl(int ttl);
- virtual int getsocket() {return sockfd;}
+ virtual int getttl() const;
+ virtual int setttl(int ttl) const;
+ virtual int getsocket() const {return sockfd;}
 };
 
 // Schnittstelle zu den Funktionen des Betriebsystems
 class UDPSocket : public AbstractSocket {
 public:
  UDPSocket();
- virtual int sendto(IPAddr *destination, const void *buf, int bytes);
- virtual int recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen);
- virtual int recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen, int *ttl);
+ virtual int sendto(const IPAddr *destination, const void *buf, int bytes) const;
+ virtual int recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen) const;
+ virtual int recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen, int *ttl) const;
 };
 
 class MulticastUDPSocket : public UDPSocket {
 public:
  MulticastUDPSocket();
  
- virtual int join(IPAddr *mcgroup);
- virtual int join(IPAddr *mcgroup, IPAddr *interface);
- virtual int leave(IPAddr *mcgroup);
- virtual int getttl();
- virtual int setttl(int ttl);
- virtual int enableloopmode(int flag);
- virtual int setoutgoinginterface(IPAddr *interface);
+ virtual int join(const IPAddr *mcgroup) const;
+ virtual int join(const IPAddr *mcgroup, const IPAddr *interface) const;
+ virtual int leave(const IPAddr *mcgroup) const;
+ virtual int getttl() const;
+ virtual int setttl(int ttl) const;
+ virtual int enableloopmode(int flag) const;
+ virtual int setoutgoinginterface(const IPAddr *interface) const;
 };
 
 class TCPSocket : public AbstractSocket {
 public:
  TCPSocket();
 
- virtual int connect(IPAddr *destination);
- virtual int send(const void *buf, int bytes);
- virtual int sendline(const char *str);
- virtual int recv(void *buf, int maxbytes);
- virtual int recvline(void *buf, int maxbytes);
+ virtual int connect(const IPAddr *destination);
+ virtual int send(const void *buf, int bytes) const;
+ virtual int sendline(const char *str) const;
+ virtual int recv(void *buf, int maxbytes) const;
+ virtual int recvline(void *buf, int maxbytes) const;
 };
