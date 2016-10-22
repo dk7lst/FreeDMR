@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include "opt.h"
 
 Opt::Opt() {
@@ -43,33 +44,37 @@ void Opt::printHelp(FILE *pFile) const {
 
 bool Opt::parse(int argc, char *argv[]) {
   m_sAppName = argv[0];
-  const char * const*paszNextArg = argv + 1;
-  int iNumArgLeft = argc - 1;
-  while(iNumArgLeft--) {
-    const char *pszOpt = *paszNextArg++;
-    //printf("\"%s\"\n", pszOpt);
-    if(*pszOpt == '-') {
-      std::map<std::string, OptEntry>::iterator it = m_OptMap.find(pszOpt);
+  std::vector<std::string> args;
+  for(int i = 1; i < argc; ++i) args.push_back(argv[i]);
+  while(!args.empty()) {
+    std::string sOpt = args.front();
+    args.erase(args.begin());
+    //printf("\"%s\"\n", sOpt.c_str());
+    if(sOpt[0] == '-') { // Options starting with dash
+      std::map<std::string, OptEntry>::iterator it = m_OptMap.find(sOpt);
       if(it == m_OptMap.end()) {
-        fprintf(stderr, "Unknown option \"%s\"!\n", pszOpt);
+        fprintf(stderr, "Unknown option \"%s\"!\n", sOpt.c_str());
         return false;
       }
       it->second.m_bIsSet = true;
       if(it->second.m_bNeedsParam) {
-        if(!iNumArgLeft) {
-          fprintf(stderr, "Missing parameter for option \"%s\"!\n", pszOpt);
+        if(args.empty()) {
+          fprintf(stderr, "Missing parameter for option \"%s\"!\n", sOpt.c_str());
           return false;
         }
-        it->second.m_sParam = *paszNextArg++;
-        --iNumArgLeft;
+        it->second.m_sParam = args.front();
+        args.erase(args.begin());
       }
     }
-    else {
+    else if(sOpt[0] == '@') { // Options starting with @
+      if(!loadFile(args, sOpt.substr(1))) return false;
+    }
+    else { // Options without dash-prefix
       bool bFound = false;
       std::map<std::string, OptEntry>::iterator it = m_OptMap.begin();
       while(it != m_OptMap.end()) {
-        if(it->first[0] != '-' && !it->second.m_bIsSet) {
-          it->second.m_sParam = pszOpt;
+        if(it->first[0] != '-' && !it->second.m_bIsSet) { // assign to first unset non-dash option
+          it->second.m_sParam = sOpt;
           it->second.m_bIsSet = true;
           bFound = true;
           break;
@@ -77,7 +82,7 @@ bool Opt::parse(int argc, char *argv[]) {
         ++it;
       }
       if(!bFound) {
-        fprintf(stderr, "Unassignable option \"%s\"!\n", pszOpt);
+        fprintf(stderr, "Unassignable option \"%s\"!\n", sOpt.c_str());
         return false;
       }
     }
@@ -147,4 +152,20 @@ void Opt::dump() const {
       it->second.m_sParam.c_str());
     ++it;
   }
+}
+
+bool Opt::loadFile(std::vector<std::string> &args, std::string sFileName) {
+  FILE *fp = fopen(sFileName.c_str(), "r");
+  if(!fp) {
+    perror(sFileName.c_str());
+    return false;
+  }
+  char lineBuf[512];
+  while(fgets(lineBuf, sizeof lineBuf, fp) != NULL) {
+    char *p = strchr(lineBuf, '\n');
+    if(p) *p = 0;
+    if(strlen(lineBuf) > 0) args.push_back(lineBuf); // TODO: allow multiple arguments per line!
+  }
+  fclose(fp);
+  return true;
 }
