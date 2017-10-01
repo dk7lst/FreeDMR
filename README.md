@@ -10,6 +10,7 @@ You'll need some basic understanding on how software development works in order 
 I try to avoid too fancy dependencies in order to keep the software simple to build, use and maintain. But you'll need at least:
 - C++ compiler (g++)
 - pthread library
+- OpenSSL library (libssl) for hash calculation for Homebrew protocol
 - make
 - subversion or git make updating a lot easier
 
