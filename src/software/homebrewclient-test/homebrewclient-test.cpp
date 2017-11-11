@@ -2,12 +2,14 @@
 #include <stdio.h>
 #include "../../lib/platform/platform.h"
 #include "../../lib/data/opt.h"
+#include "../../lib/homebrew/homebrewpacket.h"
 #include "../../lib/homebrew/homebrewclient.h"
 
 enum {
   P_ServerHost,
   P_ServerPort,
   P_ServerPasswd,
+  P_ServerDialect,
   P_SimMode,
   P_DebugMode,
   //P_LogFile,
@@ -16,6 +18,7 @@ enum {
   P_Callsign,
   P_FreqRx,
   P_FreqTx,
+  P_TxPower,
   P_ColorCode,
   P_RptLat,
   P_RptLon,
@@ -32,13 +35,15 @@ int main(int argc, char *argv[]) {
   opt.registerOpt(P_ServerHost, "-sh", false, true, "specify homebrew server host (default: 127.0.0.1)", "127.0.0.1");
   opt.registerOpt(P_ServerPort, "-sp", false, true, "specify homebrew server port (default: 62030)", "62030");
   opt.registerOpt(P_ServerPasswd, "-pw", false, true, "specify homebrew server password");
+  opt.registerOpt(P_ServerDialect, "-sd", false, true, "specify homebrew protocol dialect: 0:classic 1:MMDVM (default)", "1");
   opt.registerOpt(P_SimMode, "-s", false, false, "simulate without real network connection");
   opt.registerOpt(P_LogLevel, "-ll", false, true, "log level");
   opt.registerOpt(P_DebugMode, "-debug", false, false, "set debug mode");
-  opt.registerOpt(P_RptId, "-id", false, true, "set repeater DMR ID", 0);
+  opt.registerOpt(P_RptId, "-id", false, true, "set repeater DMR ID", "1");
   opt.registerOpt(P_Callsign, "-cs", false, true, "set repeater callsign", "NOCALL");
-  opt.registerOpt(P_FreqRx, "-frx", false, true, "set rx frequency in Hz");
-  opt.registerOpt(P_FreqTx, "-ftx", false, true, "set rx frequency in Hz");
+  opt.registerOpt(P_FreqRx, "-frx", false, true, "set rx frequency [Hz]");
+  opt.registerOpt(P_FreqTx, "-ftx", false, true, "set tx frequency [Hz]");
+  opt.registerOpt(P_TxPower, "-pwr", false, true, "set tx power [dBm]", "10");
   opt.registerOpt(P_ColorCode, "-cc", false, true, "set DMR color-code (default: 1)", "1");
   opt.registerOpt(P_RptLat, "-lat", false, true, "set repeater latitude");
   opt.registerOpt(P_RptLon, "-lon", false, true, "set repeater longitude");
@@ -52,7 +57,7 @@ int main(int argc, char *argv[]) {
     opt.printHelp();
     return 1;
   }
-  
+
   bool bDebug = opt.get(P_DebugMode);
   bool bSimMode = opt.get(P_SimMode);
 
@@ -66,6 +71,7 @@ int main(int argc, char *argv[]) {
   client.setRptCallsign(opt.getString(P_Callsign));
   client.setRxFrequency_Hz(opt.getInt(P_FreqRx));
   client.setTxFrequency_Hz(opt.getInt(P_FreqTx));
+  client.setTxPower_dBm(opt.getInt(P_TxPower));
   client.setColorCode(opt.getInt(P_ColorCode));
   client.setLatitude(opt.getDouble(P_RptLat));
   client.setLongitude(opt.getDouble(P_RptLon));
@@ -76,7 +82,23 @@ int main(int argc, char *argv[]) {
   client.setSoftwareId(opt.getString(P_SoftwareId));
   client.setPackageId(opt.getString(P_PackageId));
 
-  client.open(opt.getString(P_ServerHost).c_str(), opt.getString(P_ServerPasswd).c_str(), opt.getInt(P_ServerPort));
+  puts("Connecting...");
+  client.setMaxPacketRxQueueSize(1000);
+  client.open(opt.getString(P_ServerHost).c_str(), opt.getString(P_ServerPasswd).c_str(), opt.getInt(P_ServerPort), (HomebrewClient::PROTOCOLDIALECT)opt.getInt(P_ServerDialect));
+  sleep(10);
+
+  puts("Replaying...");
+  HomebrewPacket *p;
+  while((p = client.getRxPacket()) != NULL) {
+    putchar('.');
+    p->setRptId(client.getRptId());
+    client.sendTxPacket(p);
+    delete p;
+    usleep(50000);
+  }
+
+  puts("Disconnecting...");
   client.close();
+  puts("Exit!");
   return 0;
 }

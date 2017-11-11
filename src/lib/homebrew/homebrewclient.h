@@ -2,13 +2,22 @@
 #include <stdio.h>
 #include <string>
 #include <pthread.h>
+#include <vector>
 #include "../socket/socketlib.h"
+
+class HomebrewPacket;
 
 // Implementation of the Homebrew Repeater Protocol for connecting DMR amateur
 // radio networks like BrandMeister.
 // See https://bm.pd0zry.nl/index.php/Homebrew_repeater_protocol for details.
 class HomebrewClient {
 public:
+  enum PROTOCOLDIALECT {
+    PDIALECT_CLASSIC, // Classic Homebrew Protocol
+    PDIALECT_MMDVM, // MMDVM variant
+    PDIALECT_INVALID // must be last entry!
+  };
+
   enum THREADSTATE {
     TSTATE_IDLE,
     TSTATE_RUNNING,
@@ -16,13 +25,20 @@ public:
     TSTATE_STOPPED
   };
 
+  enum CONNECTIONPHASE {
+    CP_DISCONNECTED,
+    CP_LOGIN,
+    CP_AUTH,
+    CP_CONFIG,
+    CP_DATA
+  };
+
   HomebrewClient();
   virtual ~HomebrewClient();
 
-  bool open(const char *pszHostName, const char *pszPasswd, uint16_t u16Port = 62030);
+  bool open(const char *pszHostName, const char *pszPasswd, uint16_t u16Port = 62030, PROTOCOLDIALECT iDialect = PDIALECT_CLASSIC);
   void close();
-  
-  void runWatchdogThread();
+
   void runReceiveThread();
 
   int getRptId() const {
@@ -55,6 +71,14 @@ public:
 
   void setTxFrequency_Hz(int iFreq_Hz) {
     m_iTxFreq_Hz = iFreq_Hz;
+  }
+  
+  int getTxPower_dBm() const {
+    return m_iTxPower_dBm;
+  }
+
+  void setTxPower_dBm(int iTxPower_dBm) {
+    m_iTxPower_dBm = iTxPower_dBm;
   }
 
   int getColorCode() const {
@@ -129,6 +153,17 @@ public:
     m_sPackageId = sPackageId;
   }
 
+  int getMaxPacketRxQueueSize() const {
+    return m_iMaxPacketRxQueueSize;
+  }
+
+  void setMaxPacketRxQueueSize(int iMaxPacketRxQueueSize) {
+    m_iMaxPacketRxQueueSize = iMaxPacketRxQueueSize;
+  }
+
+  HomebrewPacket *getRxPacket();
+  bool sendTxPacket(const HomebrewPacket *pPacket);
+
   void setSimulationMode(bool bOnOff) {
     m_bSimulationMode = bOnOff;
   }
@@ -142,16 +177,18 @@ protected:
   int send(const void *txBuffer, int iBytes) const;
 
   pthread_mutex_t m_lckTx;
-  pthread_t m_WatchdogThread, m_ReceiveThread;
-  THREADSTATE m_WatchdogThreadState, m_ReceiveThreadState;
+  pthread_t m_ReceiveThread;
+  THREADSTATE m_eReceiveThreadState;
+  CONNECTIONPHASE m_ePhase;
 
   IPAddr m_ServerAddr;
   UDPSocket m_sock;
   std::string m_sServerPasswd;
+  PROTOCOLDIALECT m_iDialect;
 
   int m_iRptId;
   std::string m_sRptCallsign;
-  int m_iRxFreq_Hz, m_iTxFreq_Hz;
+  int m_iRxFreq_Hz, m_iTxFreq_Hz, m_iTxPower_dBm;
   int m_iColorCode;
   double m_dLatitude, m_dLongitude;
   int m_iHeight_m;
@@ -159,6 +196,9 @@ protected:
   std::string m_sDescription;
   std::string m_sHomepageURL;
   std::string m_sSoftwareId, m_sPackageId;
+
+  std::vector<HomebrewPacket *> m_PacketRxQueue;
+  int m_iMaxPacketRxQueueSize;
 
   FILE *m_pLogFile;
   int m_iLogLevel;

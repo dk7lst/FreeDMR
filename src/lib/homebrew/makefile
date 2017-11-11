@@ -1,6 +1,6 @@
 all: homebrewclient.o homebrewpacket.o
 
-homebrewclient.o: homebrewclient.cpp homebrewclient.h ../socket/socketlib.h
+homebrewclient.o: homebrewclient.cpp homebrewclient.h ../socket/socketlib.h homebrewpacket.h
 	g++ -Wall -c homebrewclient.cpp
 
 homebrewpacket.o: homebrewpacket.cpp homebrewpacket.h
