@@ -85,6 +85,8 @@ int main(int argc, char *argv[]) {
   puts("Connecting...");
   client.setMaxPacketRxQueueSize(1000);
   client.open(opt.getString(P_ServerHost).c_str(), opt.getString(P_ServerPasswd).c_str(), opt.getInt(P_ServerPort), (HomebrewClient::PROTOCOLDIALECT)opt.getInt(P_ServerDialect));
+  
+  puts("Recording...");
   sleep(10);
 
   puts("Replaying...");

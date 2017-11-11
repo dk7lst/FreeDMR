@@ -122,7 +122,7 @@ void HomebrewClient::runReceiveThread() {
     if(m_pLogFile && m_iLogLevel >= 10) {
       fprintf(m_pLogFile, "HomebrewClient::runReceiveThread(): Phase: %d Received %d bytes from %s:", m_ePhase, iRxBytes, fromAddr.tostring(txBuffer));
       for(int i = 0; i < iRxBytes; ++i) {
-        if(m_iLogLevel >= 90) fprintf(m_pLogFile, " %X'%c'", rxBuffer[i], rxBuffer[i]);
+        if(m_iLogLevel >= 90) fprintf(m_pLogFile, " %X'%c'", rxBuffer[i], isprint(rxBuffer[i]) ? rxBuffer[i] : ' ');
         else fprintf(m_pLogFile, " %X", rxBuffer[i]);
       }
       fputc('\n', m_pLogFile);
