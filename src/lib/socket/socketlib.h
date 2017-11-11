@@ -8,6 +8,10 @@ public:
 
  IPAddr();
  IPAddr(unsigned long n_addr, unsigned short n_port);
+
+ bool operator==(const IPAddr &other) const;
+ bool operator!=(const IPAddr &other) const;
+
  void clear();
  char *tostring(char *buf) const;
  int setbydotstring(const char *dotstr);
@@ -43,6 +47,7 @@ public:
  virtual int getttl() const;
  virtual int setttl(int ttl) const;
  virtual int getsocket() const {return sockfd;}
+ virtual bool waitfordata(int timeout_us) const;
 };
 
 // Schnittstelle zu den Funktionen des Betriebsystems
@@ -51,6 +56,7 @@ public:
  UDPSocket();
  virtual int sendto(const IPAddr *destination, const void *buf, int bytes) const;
  virtual int recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen) const;
+ virtual int recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen, int timeout_us) const;
  virtual int recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen, int *ttl) const;
 };
 

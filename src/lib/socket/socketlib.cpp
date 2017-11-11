@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <netinet/in.h>
@@ -21,6 +22,14 @@ IPAddr::IPAddr(unsigned long n_addr, unsigned short n_port) { // Parameter in ne
  a.sin_addr.s_addr=n_addr;
  a.sin_port=n_port;
 }
+
+ bool IPAddr::operator==(const IPAddr &other) const {
+  return a.sin_family == other.a.sin_family && a.sin_addr.s_addr == other.a.sin_addr.s_addr && a.sin_port == other.a.sin_port;
+ }
+
+ bool IPAddr::operator!=(const IPAddr &other) const {
+  return !operator==(other);
+ }
 
 void IPAddr::clear() {
  a.sin_addr.s_addr=a.sin_port=0;
@@ -172,6 +181,16 @@ int AbstractSocket::setttl(int ttl) const {
  return setsockopt(sockfd,IPPROTO_IP,IP_TTL,&ttlbyte,sizeof(ttlbyte));
 }
 
+bool AbstractSocket::waitfordata(int timeout_us) const {
+ fd_set rxset;
+ FD_ZERO(&rxset);
+ FD_SET(sockfd, &rxset);
+ timeval timeout;
+ timeout.tv_sec = 0;
+ timeout.tv_usec = timeout_us;
+ return select(sockfd + 1, &rxset, NULL, NULL, &timeout) > 0;
+}
+
 UDPSocket::UDPSocket() : AbstractSocket() {
  socketmode = SOCK_DGRAM;
 }
@@ -183,6 +202,12 @@ int UDPSocket::sendto(const IPAddr *destination, const void *buf, int bytes) con
 int UDPSocket::recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen) const {
  if(fromaddrlen) *fromaddrlen=sizeof(fromaddr->a);
  return ::recvfrom(sockfd,buf,maxbytes,0,(sockaddr *)&fromaddr->a,fromaddrlen);
+}
+
+int UDPSocket::recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen, int timeout_us) const {
+  if(waitfordata(timeout_us)) return recvfrom(buf, maxbytes, fromaddr, fromaddrlen);
+  if(fromaddrlen) *fromaddrlen = 0;
+  return 0;
 }
 
 int UDPSocket::recvfrom(void *buf, int maxbytes, IPAddr *fromaddr, unsigned *fromaddrlen, int *ttl) const {
