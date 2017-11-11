@@ -13,6 +13,7 @@ public:
   bool init();
   bool reset();
   bool put(const void *pData, int iLength);
+  unsigned int getHash(unsigned char *pBuf, unsigned int uMaxSize);
   std::string getHashHex();
 
 protected:

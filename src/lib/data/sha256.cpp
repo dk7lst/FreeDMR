@@ -39,17 +39,27 @@ bool Sha256::put(const void *pData, int iLength) {
   return m_mdctx && EVP_DigestUpdate(m_mdctx, pData, iLength) == 1;
 }
 
-std::string Sha256::getHashHex() {
-  std::string sHexStr;
+unsigned int Sha256::getHash(unsigned char *pBuf, unsigned int uMaxSize) {
   unsigned char md_value[EVP_MAX_MD_SIZE];
-  unsigned int md_len = 0;
+  unsigned int md_len = 0, uBytes = 0;
   if(m_mdctx && EVP_DigestFinal_ex(m_mdctx, md_value, &md_len) == 1) {
-    char buf[8];
-    for(unsigned i = 0; i < md_len; ++i) {
-      sprintf(buf, "%02X", md_value[i]);
-      sHexStr += buf;
+    if(md_len <= uMaxSize) {
+      memcpy(pBuf, md_value, md_len);
+      uBytes = md_len;
     }
   }
   reset();
+  return uBytes;
+}
+
+std::string Sha256::getHashHex() {
+  std::string sHexStr;
+  unsigned char md_value[EVP_MAX_MD_SIZE];
+  unsigned int md_len = getHash(md_value, EVP_MAX_MD_SIZE);
+  char buf[8];
+  for(unsigned i = 0; i < md_len; ++i) {
+    sprintf(buf, "%02X", md_value[i]);
+    sHexStr += buf;
+  }
   return sHexStr;
 }
