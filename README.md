@@ -11,6 +11,7 @@ I try to avoid too fancy dependencies in order to keep the software simple to bu
 - C++ compiler (g++)
 - pthread library
 - OpenSSL library (libssl) for hash calculation for Homebrew protocol
+  (install using "apt-get update; apt-get install libssl-dev" on Debian/Raspbian-systems)
 - make
 - subversion or git make updating a lot easier
 

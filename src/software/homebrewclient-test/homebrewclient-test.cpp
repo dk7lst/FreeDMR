@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "../../lib/platform/platform.h"
 #include "../../lib/data/opt.h"
 #include "../../lib/homebrew/homebrewpacket.h"
