@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <signal.h>
 #include "../../lib/platform/platform.h"
 #include "../../lib/data/opt.h"
 #include "../../lib/homebrew/homebrewpacket.h"
@@ -28,8 +29,19 @@ enum {
   P_RptDescr,
   P_RptURL,
   P_SoftwareId,
-  P_PackageId
+  P_PackageId,
+  P_LoopMode,
+  P_DstIdOverride,
+  P_RecTime
 };
+
+void SignalHandler(int signum);
+
+int g_bExitRequest = false;
+
+void SignalHandler(int signum) {
+  g_bExitRequest = true;
+}
 
 int main(int argc, char *argv[]) {
   Opt opt;
@@ -54,13 +66,19 @@ int main(int argc, char *argv[]) {
   opt.registerOpt(P_RptURL, "-hp", false, true, "set repeater homepage URL");
   opt.registerOpt(P_SoftwareId, "-sid", false, true, "set software id");
   opt.registerOpt(P_PackageId, "-pid", false, true, "set package id");
+  opt.registerOpt(P_LoopMode, "-loop", false, false, "repeat recording and playback until aborted with CTRL+C");
+  opt.registerOpt(P_DstIdOverride, "-did", false, true, "override DMR destination ID (positive numbers for private calls, negative numbers for group calls)", "0");
+  opt.registerOpt(P_RecTime, "-rtime", false, true, "recording time [sec]", "10");
   if(!opt.parse(argc, argv)) {
     opt.printHelp();
     return 1;
   }
 
-  bool bDebug = opt.get(P_DebugMode);
-  bool bSimMode = opt.get(P_SimMode);
+  const bool bDebug = opt.get(P_DebugMode);
+  const bool bSimMode = opt.get(P_SimMode);
+  const bool bLoopMode = opt.get(P_LoopMode);
+  const int iDstIdOverride = opt.getInt(P_DstIdOverride);
+  const int iRecTime = opt.getInt(P_RecTime);
 
   if(bDebug) opt.dump();
   
@@ -83,22 +101,36 @@ int main(int argc, char *argv[]) {
   client.setSoftwareId(opt.getString(P_SoftwareId));
   client.setPackageId(opt.getString(P_PackageId));
 
+  signal(SIGINT, SignalHandler); // catch CTRL+C
+
   puts("Connecting...");
   client.setMaxPacketRxQueueSize(1000);
   client.open(opt.getString(P_ServerHost).c_str(), opt.getString(P_ServerPasswd).c_str(), opt.getInt(P_ServerPort), (HomebrewClient::PROTOCOLDIALECT)opt.getInt(P_ServerDialect));
-  
-  puts("Recording...");
-  sleep(10);
 
-  puts("Replaying...");
-  HomebrewPacket *p;
-  while((p = client.getRxPacket()) != NULL) {
-    putchar('.');
-    p->setRptId(client.getRptId());
-    client.sendTxPacket(p);
-    delete p;
-    usleep(50000);
-  }
+  do {
+    for(int i = iRecTime; i > 0 && !g_bExitRequest; --i) {
+      printf("Recording %d sec...\n", i);
+      sleep(1);
+    }
+
+    if(g_bExitRequest) break;
+
+    puts("Replaying...");
+    HomebrewPacket *p;
+    while((p = client.getRxPacket()) != NULL && !g_bExitRequest) {
+      putchar('.');
+      p->setRptId(client.getRptId());
+      if(iDstIdOverride) {
+        p->setDstId(abs(iDstIdOverride));
+        p->setGroupCall(iDstIdOverride < 0);
+        puts(p->toString().c_str());
+      }
+      client.sendTxPacket(p);
+      delete p;
+      usleep(50000);
+    }
+    puts(" done!");
+  } while(bLoopMode && !g_bExitRequest);
 
   puts("Disconnecting...");
   client.close();
