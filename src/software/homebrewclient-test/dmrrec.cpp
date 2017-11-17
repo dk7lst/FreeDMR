@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include <signal.h>
 #include "../../lib/platform/platform.h"
@@ -32,7 +33,9 @@ enum {
   P_PackageId,
   P_LoopMode,
   P_DstIdOverride,
-  P_RecTime
+  P_RecMode,
+  P_RecTime,
+  P_RecFile
 };
 
 void SignalHandler(int signum);
@@ -66,9 +69,11 @@ int main(int argc, char *argv[]) {
   opt.registerOpt(P_RptURL, "-hp", false, true, "set repeater homepage URL");
   opt.registerOpt(P_SoftwareId, "-sid", false, true, "set software id");
   opt.registerOpt(P_PackageId, "-pid", false, true, "set package id");
-  opt.registerOpt(P_LoopMode, "-loop", false, false, "repeat recording and playback until aborted with CTRL+C");
+  opt.registerOpt(P_LoopMode, "-loop", false, false, "repeat playback until aborted with CTRL+C");
   opt.registerOpt(P_DstIdOverride, "-did", false, true, "override DMR destination ID (positive numbers for private calls, negative numbers for group calls)", "0");
+  opt.registerOpt(P_RecMode, "-rec", false, false, "record mode, otherwise play mode");
   opt.registerOpt(P_RecTime, "-rtime", false, true, "recording time [sec]", "10");
+  opt.registerOpt(P_RecFile, "-file", false, true, "specify file to load/save DMR data to/from", "data.dmr");
   if(!opt.parse(argc, argv)) {
     opt.printHelp();
     return 1;
@@ -78,7 +83,9 @@ int main(int argc, char *argv[]) {
   const bool bSimMode = opt.get(P_SimMode);
   const bool bLoopMode = opt.get(P_LoopMode);
   const int iDstIdOverride = opt.getInt(P_DstIdOverride);
+  const bool bRecMode = opt.get(P_RecMode);
   const int iRecTime = opt.getInt(P_RecTime);
+  const std::string sFile = opt.getString(P_RecFile);
 
   if(bDebug) opt.dump();
   
@@ -105,32 +112,54 @@ int main(int argc, char *argv[]) {
 
   puts("Connecting...");
   client.setMaxPacketRxQueueSize(1000);
-  client.open(opt.getString(P_ServerHost).c_str(), opt.getString(P_ServerPasswd).c_str(), opt.getInt(P_ServerPort), (HomebrewClient::PROTOCOLDIALECT)opt.getInt(P_ServerDialect));
+  if(!client.open(opt.getString(P_ServerHost).c_str(), opt.getString(P_ServerPasswd).c_str(), opt.getInt(P_ServerPort), (HomebrewClient::PROTOCOLDIALECT)opt.getInt(P_ServerDialect))) {
+    puts("Connection failed!");
+    return 1;
+  }
 
-  do {
-    for(int i = iRecTime; i > 0 && !g_bExitRequest; --i) {
-      printf("Recording %d sec...\n", i);
-      sleep(1);
-    }
-
-    if(g_bExitRequest) break;
-
-    puts("Replaying...");
-    HomebrewPacket *p;
-    while((p = client.getRxPacket()) != NULL && !g_bExitRequest) {
-      putchar('.');
-      p->setRptId(client.getRptId());
-      if(iDstIdOverride) {
-        p->setDstId(abs(iDstIdOverride));
-        p->setGroupCall(iDstIdOverride < 0);
-        //puts(p->toString().c_str());
+  if(bRecMode) {
+    FILE *f = fopen(sFile.c_str(), "wb");
+    if(f) {
+      for(int i = iRecTime; i > 0 && !g_bExitRequest; --i) {
+        printf("Recording %d sec...\n", i);
+        sleep(1);
+        HomebrewPacket *p;
+        while((p = client.getRxPacket()) != NULL && !g_bExitRequest) {
+          putchar('.');
+          fwrite(p->getRawDataPtr(), p->getRawDataSize(), 1, f);
+          delete p;
+        }
       }
-      client.sendTxPacket(p);
-      delete p;
-      usleep(50000);
+      fclose(f);
+      puts(" done!");
     }
-    puts(" done!");
-  } while(bLoopMode && !g_bExitRequest);
+    else perror(sFile.c_str());
+  }
+  else {
+    FILE *f = fopen(sFile.c_str(), "rb");
+    if(f) {
+      do {
+        puts("Playing...");
+        rewind(f);
+        HomebrewPacket p;
+        while(fread((void *)p.getRawDataPtr(), p.getRawDataSize(), 1, f) == 1 && !g_bExitRequest) {
+          putchar('.');
+          p.setRptId(client.getRptId());
+          if(iDstIdOverride) {
+            p.setDstId(abs(iDstIdOverride));
+            p.setGroupCall(iDstIdOverride < 0);
+            //puts(p.toString().c_str());
+          }
+          client.sendTxPacket(&p);
+          usleep(50000);
+        }
+        putchar('\n');
+      } while(bLoopMode && !g_bExitRequest);
+      fclose(f);
+      puts(" done!");
+    }
+    else perror(sFile.c_str());
+  }
 
   puts("Disconnecting...");
   client.close();
