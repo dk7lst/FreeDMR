@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <time.h>
 #include <assert.h>
 #include <string>
 #include "../platform/platform.h"
@@ -16,7 +15,7 @@ void *ReceiveThread(void *pClassInstance) {
 }
 
 HomebrewClient::HomebrewClient() {
-  pthread_mutex_init(&m_lckTx, NULL);
+  pthread_mutex_init(&m_lckRxQueue, NULL);
   m_eReceiveThreadState = TSTATE_IDLE;
   m_ePhase = CP_DISCONNECTED;
 
@@ -34,6 +33,8 @@ HomebrewClient::HomebrewClient() {
 
   m_iMaxPacketRxQueueSize = 50;
 
+  m_tLastPongTime = 0;
+
   m_pLogFile = NULL;
   m_iLogLevel = 0;
 
@@ -42,7 +43,7 @@ HomebrewClient::HomebrewClient() {
 
 HomebrewClient::~HomebrewClient() {
   close();
-  pthread_mutex_destroy(&m_lckTx);
+  pthread_mutex_destroy(&m_lckRxQueue);
 }
 
 bool HomebrewClient::open(const char *pszHostName, const char *pszPasswd, uint16_t u16Port, PROTOCOLDIALECT iDialect) {
@@ -101,7 +102,8 @@ void HomebrewClient::runReceiveThread() {
   int iBytes = send(txBuffer, iTxBytes);
   if(m_pLogFile && m_iLogLevel >= 5) fprintf(m_pLogFile, "HomebrewClient::runReceiveThread(): send greeting (DMR ID: %d): %d of %d bytes sent.\n", m_iRptId, iBytes, iTxBytes);
 
-  time_t tLastPingTime = 0, tLastPongTime = time(NULL);
+  time_t tLastPingTime = 0;
+  m_tLastPongTime = time(NULL);
 
   BYTE rxBuffer[512];
   while(m_eReceiveThreadState == TSTATE_RUNNING) {
@@ -175,14 +177,17 @@ void HomebrewClient::runReceiveThread() {
         }
         else if(iRxBytes == 11 && !memcmp(rxBuffer, "MSTPONG", 7)) { // pong received
           if(m_pLogFile && m_iLogLevel >= 5) fputs("HomebrewClient::runReceiveThread(): received pong from master!\n", m_pLogFile);
-          tLastPongTime = tNow;
+          m_tLastPongTime = tNow;
         }
         else if(iRxBytes >= 53 && !memcmp(rxBuffer, "DMRD", 4)) { // DMR data received
           HomebrewPacket *p = new HomebrewPacket(rxBuffer, 53);
           if(p) {
             if(m_pLogFile && m_iLogLevel >= 50) fprintf(m_pLogFile, "HomebrewClient::runReceiveThread(): received DMR data packet: %s\n", p->toString().c_str());
-            if(m_PacketRxQueue.size() > (unsigned)m_iMaxPacketRxQueueSize) delete getRxPacket();
-            m_PacketRxQueue.push_back(p);
+            if(!pthread_mutex_lock(&m_lckRxQueue)) {
+              if(m_PacketRxQueue.size() > (unsigned)m_iMaxPacketRxQueueSize) delete getRxPacket();
+              m_PacketRxQueue.push_back(p);
+              pthread_mutex_unlock(&m_lckRxQueue);
+            }
           }
         }
         break;
@@ -202,9 +207,14 @@ void HomebrewClient::runReceiveThread() {
 }
 
 HomebrewPacket *HomebrewClient::getRxPacket() {
-  if(m_PacketRxQueue.empty()) return NULL;
-  HomebrewPacket *p = m_PacketRxQueue.front();
-  m_PacketRxQueue.erase(m_PacketRxQueue.begin());
+  HomebrewPacket *p = NULL;
+  if(!pthread_mutex_lock(&m_lckRxQueue)) {
+    if(!m_PacketRxQueue.empty()) {
+      p = m_PacketRxQueue.front();
+      m_PacketRxQueue.erase(m_PacketRxQueue.begin());
+    }
+    pthread_mutex_unlock(&m_lckRxQueue);
+  }
   return p;
 }
 

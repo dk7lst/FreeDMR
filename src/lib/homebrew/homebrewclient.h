@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string>
 #include <pthread.h>
+#include <time.h>
 #include <vector>
 #include "../socket/socketlib.h"
 
@@ -163,6 +164,14 @@ public:
 
   HomebrewPacket *getRxPacket();
   bool sendTxPacket(const HomebrewPacket *pPacket);
+  
+  time_t getLastPongTime() const {
+    return m_tLastPongTime;
+  }
+
+  time_t getLastPongAge_s() const {
+    return time(NULL) - m_tLastPongTime;
+  }
 
   void setSimulationMode(bool bOnOff) {
     m_bSimulationMode = bOnOff;
@@ -176,7 +185,7 @@ public:
 protected:
   int send(const void *txBuffer, int iBytes) const;
 
-  pthread_mutex_t m_lckTx;
+  pthread_mutex_t m_lckRxQueue;
   pthread_t m_ReceiveThread;
   THREADSTATE m_eReceiveThreadState;
   CONNECTIONPHASE m_ePhase;
@@ -199,6 +208,8 @@ protected:
 
   std::vector<HomebrewPacket *> m_PacketRxQueue;
   int m_iMaxPacketRxQueueSize;
+
+  time_t m_tLastPongTime;
 
   FILE *m_pLogFile;
   int m_iLogLevel;
