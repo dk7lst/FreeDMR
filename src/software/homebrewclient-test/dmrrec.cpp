@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
             //puts(p.toString().c_str());
           }
           client.sendTxPacket(&p);
-          usleep(50000);
+          usleep(60000); // 3 AMBE-frames per DMR-packet with 20ms of voice data each.
         }
         putchar('\n');
       } while(bLoopMode && !g_bExitRequest);

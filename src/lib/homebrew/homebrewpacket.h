@@ -38,6 +38,7 @@ public:
     m_data[5] = iSrcId >> 16;
     m_data[6] = iSrcId >> 8;
     m_data[7] = iSrcId;
+    // TODO: Headers inside m_data need to be updated too to avoid conflicting headers!
     return true;
   }
 
@@ -49,6 +50,7 @@ public:
     m_data[8] = iDstId >> 16;
     m_data[9] = iDstId >> 8;
     m_data[10] = iDstId;
+    // TODO: Headers inside m_data need to be updated too to avoid conflicting headers!
     return true;
   }
 

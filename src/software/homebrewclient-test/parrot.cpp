@@ -105,7 +105,10 @@ int main(int argc, char *argv[]) {
 
   puts("Connecting...");
   client.setMaxPacketRxQueueSize(1000);
-  client.open(opt.getString(P_ServerHost).c_str(), opt.getString(P_ServerPasswd).c_str(), opt.getInt(P_ServerPort), (HomebrewClient::PROTOCOLDIALECT)opt.getInt(P_ServerDialect));
+  if(!client.open(opt.getString(P_ServerHost).c_str(), opt.getString(P_ServerPasswd).c_str(), opt.getInt(P_ServerPort), (HomebrewClient::PROTOCOLDIALECT)opt.getInt(P_ServerDialect))) {
+    puts("Connection failed!");
+    return 1;
+  }
 
   do {
     for(int i = iRecTime; i > 0 && !g_bExitRequest; --i) {
@@ -127,7 +130,7 @@ int main(int argc, char *argv[]) {
       }
       client.sendTxPacket(p);
       delete p;
-      usleep(50000);
+      usleep(60000); // 3 AMBE-frames per DMR-packet with 20ms of voice data each.
     }
     puts(" done!");
   } while(bLoopMode && !g_bExitRequest);
