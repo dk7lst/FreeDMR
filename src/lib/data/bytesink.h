@@ -1,4 +1,5 @@
 #pragma once
+#include "../platform/platform.h"
 
 class ByteSink {
 public:

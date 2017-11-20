@@ -6,6 +6,7 @@
 #include <string>
 #include "../platform/platform.h"
 #include "../data/sha256.h"
+#include "../data/hexdump.h"
 #include "homebrewpacket.h"
 #include "homebrewclient.h"
 
@@ -122,12 +123,8 @@ void HomebrewClient::runReceiveThread() {
     if(iRxBytes <= 0) continue; // Ignore timeout
 
     if(m_pLogFile && m_iLogLevel >= 10) {
-      fprintf(m_pLogFile, "HomebrewClient::runReceiveThread(): Phase: %d Received %d bytes from %s:", m_ePhase, iRxBytes, fromAddr.tostring(txBuffer));
-      for(int i = 0; i < iRxBytes; ++i) {
-        if(m_iLogLevel >= 90) fprintf(m_pLogFile, " %X'%c'", rxBuffer[i], isprint(rxBuffer[i]) ? rxBuffer[i] : ' ');
-        else fprintf(m_pLogFile, " %X", rxBuffer[i]);
-      }
-      fputc('\n', m_pLogFile);
+      fprintf(m_pLogFile, "HomebrewClient::runReceiveThread(): Phase: %d Received %d bytes from %s:\n", m_ePhase, iRxBytes, fromAddr.tostring(txBuffer));
+      HexDump::hexDump(m_pLogFile, rxBuffer, iRxBytes);
     }
 
     if(fromAddr != m_ServerAddr) {
@@ -227,10 +224,10 @@ int HomebrewClient::send(const void *txBuffer, int iBytes) const {
   bool bEnableLogging = m_pLogFile && m_iLogLevel >= 10;
   if(bEnableLogging) {
     char buf[1024];
-    fprintf(m_pLogFile, "HomebrewClient::send(%s): \"", m_ServerAddr.tostring(buf));
-    fwrite(txBuffer, iBytes, 1, m_pLogFile);
+    fprintf(m_pLogFile, "HomebrewClient::send(%s):\n", m_ServerAddr.tostring(buf));
+    HexDump::hexDump(m_pLogFile, (const BYTE *)txBuffer, iBytes);
   }
   int iResult = m_bSimulationMode ? iBytes : m_sock.sendto(&m_ServerAddr, txBuffer, iBytes);
-  if(bEnableLogging) fprintf(m_pLogFile, "\" (%d of %d bytes %s)\n", iResult, iBytes, m_bSimulationMode ? "simulated" : "sent");
+  if(bEnableLogging) fprintf(m_pLogFile, " (%d of %d bytes %s)\n", iResult, iBytes, m_bSimulationMode ? "simulated" : "sent");
   return iResult;
 }

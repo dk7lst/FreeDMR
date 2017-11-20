@@ -1,5 +1,6 @@
 #pragma once
 #include <stdio.h>
+#include "../platform/platform.h"
 #include "bytesink.h"
 
 class FileSink : public ByteSink {

@@ -1,5 +1,6 @@
 #pragma once
 #include <pthread.h>
+#include "../platform/platform.h"
 #include "bytesource.h"
 #include "bytesink.h"
 
