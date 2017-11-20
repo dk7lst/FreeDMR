@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <wordexp.h>
 #include "opt.h"
 
 Opt::Opt() {
@@ -154,7 +155,7 @@ void Opt::dump() const {
   }
 }
 
-bool Opt::loadFile(std::vector<std::string> &args, std::string sFileName) {
+bool Opt::loadFile(std::vector<std::string> &args, std::string sFileName, bool bShowErrors) {
   FILE *fp = fopen(sFileName.c_str(), "r");
   if(!fp) {
     perror(sFileName.c_str());
@@ -162,9 +163,14 @@ bool Opt::loadFile(std::vector<std::string> &args, std::string sFileName) {
   }
   char lineBuf[512];
   while(fgets(lineBuf, sizeof lineBuf, fp) != NULL) {
+    lineBuf[sizeof lineBuf - 1] = 0; // Enforce string termination for very long lines
     char *p = strchr(lineBuf, '\n');
     if(p) *p = 0;
-    if(strlen(lineBuf) > 0) args.push_back(lineBuf); // TODO: allow multiple arguments per line!
+    wordexp_t w;
+    if(!wordexp(lineBuf, &w, WRDE_NOCMD | WRDE_UNDEF | (bShowErrors ? WRDE_SHOWERR : 0))) {
+      for(size_t i = 0; i < w.we_wordc; ++i) args.push_back(w.we_wordv[i]);
+      wordfree(&w);
+    }
   }
   fclose(fp);
   return true;

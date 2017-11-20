@@ -43,7 +43,7 @@ protected:
     std::string m_sHelpText;
   };
 
-  bool loadFile(std::vector<std::string> &args, std::string sFileName);
+  bool loadFile(std::vector<std::string> &args, std::string sFileName, bool bShowErrors = true);
 
   std::string m_sAppName;
   std::map<std::string, OptEntry> m_OptMap;
