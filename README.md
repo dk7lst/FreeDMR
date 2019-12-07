@@ -36,6 +36,8 @@ WARNING: Some features of the software may require a ham radio license valid in 
 # Author
 Main Development: Lars Struß, DK7LST (http://www.dk7lst.de/)
 
+Please understand that I can not provide support for this project as it is just a hobby project in my spare time.
+
 # License
 Open Source licensed under GPL v3, see "LICENSE"-file.
 
